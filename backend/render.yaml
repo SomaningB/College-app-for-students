@@ -10,7 +10,7 @@ services:
       - key: DATABASE_NAME
         value: college_app
       - key: JWT_SECRET
-        generateValue: true
+        sync: false
       - key: JWT_ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
