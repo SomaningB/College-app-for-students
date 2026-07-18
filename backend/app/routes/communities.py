@@ -1,0 +1,128 @@
+from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+from bson import ObjectId
+from app.database import get_db
+from app.models.chat import CommunityCreate, CommunityResponse
+from app.middleware.auth import get_current_user
+
+router = APIRouter()
+
+@router.post("/")
+async def create_community(
+    data: CommunityCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    db = get_db()
+
+    existing = await db.communities.find_one({
+        "name": data.name,
+        "created_by": str(current_user["_id"])
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="You already have a community with this name")
+
+    community = {
+        "name": data.name,
+        "description": data.description or "",
+        "created_by": str(current_user["_id"]),
+        "created_by_name": current_user["name"],
+        "members": [str(current_user["_id"])],
+        "created_at": datetime.utcnow()
+    }
+
+    result = await db.communities.insert_one(community)
+
+    return {
+        "id": str(result.inserted_id),
+        "name": community["name"],
+        "description": community["description"],
+        "created_by": community["created_by"],
+        "created_by_name": community["created_by_name"],
+        "member_count": 1,
+        "members": community["members"],
+        "created_at": community["created_at"]
+    }
+
+@router.get("/")
+async def get_communities(current_user: dict = Depends(get_current_user)):
+    db = get_db()
+    current_id = str(current_user["_id"])
+
+    communities = await db.communities.find({
+        "members": current_id
+    }).sort("created_at", -1).to_list(50)
+
+    return [{
+        "id": str(c["_id"]),
+        "name": c["name"],
+        "description": c.get("description", ""),
+        "created_by": c["created_by"],
+        "created_by_name": c["created_by_name"],
+        "member_count": len(c["members"]),
+        "members": c["members"],
+        "created_at": c["created_at"]
+    } for c in communities]
+
+@router.get("/explore")
+async def explore_communities(current_user: dict = Depends(get_current_user)):
+    db = get_db()
+    current_id = str(current_user["_id"])
+
+    communities = await db.communities.find({
+        "members": {"$ne": current_id}
+    }).sort("created_at", -1).to_list(50)
+
+    return [{
+        "id": str(c["_id"]),
+        "name": c["name"],
+        "description": c.get("description", ""),
+        "created_by_name": c["created_by_name"],
+        "member_count": len(c["members"]),
+        "created_at": c["created_at"]
+    } for c in communities]
+
+@router.post("/{community_id}/join")
+async def join_community(
+    community_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    db = get_db()
+    current_id = str(current_user["_id"])
+
+    community = await db.communities.find_one({"_id": ObjectId(community_id)})
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    if current_id in community["members"]:
+        raise HTTPException(status_code=400, detail="Already a member")
+
+    await db.communities.update_one(
+        {"_id": ObjectId(community_id)},
+        {"$push": {"members": current_id}}
+    )
+
+    return {"message": "Joined community"}
+
+@router.get("/{community_id}/members")
+async def get_community_members(
+    community_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    db = get_db()
+
+    community = await db.communities.find_one({"_id": ObjectId(community_id)})
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    member_ids = [ObjectId(uid) for uid in community["members"]]
+    members = []
+    if member_ids:
+        cursor = db.users.find({"_id": {"$in": member_ids}})
+        async for user in cursor:
+            members.append({
+                "id": str(user["_id"]),
+                "name": user["name"],
+                "unique_id": user["unique_id"]
+            })
+
+    return members

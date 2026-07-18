@@ -1,0 +1,26 @@
+node_modules/
+dist/
+build/
+.env
+backend/.env
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.log
+
+# Python virtual environment
+backend/venv/
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db

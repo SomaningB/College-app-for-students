@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: college-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: college_app
+
+  backend:
+    build: ./backend
+    container_name: college-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_URL: mongodb://mongodb:27017
+      DATABASE_NAME: college_app
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: college-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  uploads_data:
