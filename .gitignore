@@ -16,6 +16,9 @@ backend/venv/
 backend/uploads/*
 !backend/uploads/.gitkeep
 
+# Android
+local.properties
+
 # IDE
 .idea/
 .vscode/

@@ -10,9 +10,11 @@ class ChatWebSocket {
   connect(token) {
     if (this.ws?.readyState === WebSocket.OPEN) return
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    this.ws = new WebSocket(`${protocol}//${host}/ws/chat?token=${token}`)
+    const base = import.meta.env.VITE_API_URL || ''
+    const protocol = base.startsWith('https') ? 'wss:' : 'ws:'
+    const host = base.replace(/^https?:\/\//, '')
+    const url = host ? `${protocol}//${host}/ws/chat?token=${token}` : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat?token=${token}`
+    this.ws = new WebSocket(url)
 
     this.ws.onopen = () => {
       this.isConnected = true
