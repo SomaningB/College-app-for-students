@@ -141,9 +141,18 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    messages = []
+    for e in errors:
+        field = ".".join(str(x) for x in e.get("loc", []))
+        msg = e.get("msg", "")
+        if field and field != "body":
+            messages.append(f"{field}: {msg}")
+        else:
+            messages.append(msg)
     return JSONResponse(
         status_code=422,
-        content={"detail": "Invalid request data"}
+        content={"detail": messages[0] if len(messages) == 1 else messages}
     )
 
 @app.get("/api/streams")
@@ -155,8 +164,11 @@ async def get_streams():
 async def app_config(request: Request):
     scheme = request.headers.get("x-forwarded-proto", "http")
     host = request.headers.get("x-forwarded-host", request.headers.get("host", "localhost:8000"))
+    from app.config import BACKEND_WS_HOST
+    ws_host = BACKEND_WS_HOST or host
+    ws_scheme = 'wss' if ws_host != host and 'onrender.com' in ws_host else ('wss' if scheme == 'https' else 'ws')
     return {
-        "ws_url": f"{'wss' if scheme == 'https' else 'ws'}://{host}/ws/chat",
+        "ws_url": f"{ws_scheme}://{ws_host}/ws/chat",
         "api_url": f"{scheme}://{host}/api",
         "app_name": "College App",
         "version": "1.0.0"

@@ -26,8 +26,10 @@ services:
       - key: BREVO_API_KEY
         sync: false
       - key: APP_URL
-        value: https://frontend-o04470abe-somaningbs-projects.vercel.app
+        value: https://college-app-by-sbelagavakar.vercel.app
       - key: FROM_EMAIL
         value: somubelagaonkar@gmail.com
       - key: FROM_NAME
         value: "College App"
+      - key: BACKEND_URL
+        value: https://college-app-backend-q8a9.onrender.com

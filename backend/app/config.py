@@ -24,6 +24,11 @@ APP_URL = os.getenv("APP_URL", "http://localhost:3000")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@collegeapp.com")
 FROM_NAME = os.getenv("FROM_NAME", "College App")
 
+BACKEND_URL = os.getenv("BACKEND_URL", "")
+BACKEND_WS_HOST = ""
+if BACKEND_URL:
+    BACKEND_WS_HOST = BACKEND_URL.replace("https://", "").replace("http://", "").rstrip("/")
+
 STREAMS = {
     "science": {
         "label": "Science Stream",
