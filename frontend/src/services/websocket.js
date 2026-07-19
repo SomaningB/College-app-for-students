@@ -15,6 +15,11 @@ class ChatWebSocket {
 
   async fetchWsUrl() {
     if (cachedWsUrl) return cachedWsUrl
+    const directWsUrl = import.meta.env.VITE_WS_URL
+    if (directWsUrl) {
+      cachedWsUrl = directWsUrl
+      return cachedWsUrl
+    }
     try {
       const base = import.meta.env.VITE_API_URL || ''
       const configUrl = base ? `${base}/app-config` : '/api/app-config'
