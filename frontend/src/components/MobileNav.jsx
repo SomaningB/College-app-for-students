@@ -1,14 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { FiGrid, FiMessageSquare, FiUsers, FiCpu, FiLogOut } from 'react-icons/fi'
+import { FiGrid, FiUsers, FiCpu, FiLogOut } from 'react-icons/fi'
 
 export default function MobileNav() {
   const { logout } = useAuth()
 
   const items = [
     { to: '/dashboard', icon: FiGrid, label: 'Home' },
-    { to: '/chat', icon: FiMessageSquare, label: 'Chat' },
     { to: '/communities', icon: FiUsers, label: 'Communities' },
     { to: '/ai-assistant', icon: FiCpu, label: 'AI' },
   ]

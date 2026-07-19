@@ -6,15 +6,14 @@ import Register from './pages/Register'
 import VerifyCode from './pages/VerifyCode'
 import Dashboard from './pages/Dashboard'
 import SubjectDetail from './pages/SubjectDetail'
-import Chat from './pages/Chat'
 import Communities from './pages/Communities'
 import CommunityChat from './pages/CommunityChat'
-import Friends from './pages/Friends'
 import AIAssistant from './pages/AIAssistant'
 import Profile from './pages/Profile'
 import MyNotes from './pages/MyNotes'
 import Search from './pages/Search'
 import Landing from './pages/Landing'
+import Terms from './pages/Terms'
 import TeacherDashboard from './pages/TeacherDashboard'
 import AdminTeachers from './pages/AdminTeachers'
 import AdminDashboard from './pages/AdminDashboard'
@@ -42,6 +41,7 @@ export default function App() {
     <AnimatePresence mode="wait">
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         <Route path="/verify-code" element={<VerifyCode />} />
@@ -49,11 +49,8 @@ export default function App() {
           <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="subjects/:subject" element={<SubjectDetail />} />
-          <Route path="chat/:uniqueId" element={<Chat />} />
-          <Route path="chat" element={<Chat />} />
           <Route path="communities" element={<Communities />} />
           <Route path="communities/:id" element={<CommunityChat />} />
-          <Route path="friends" element={<Friends />} />
           <Route path="ai-assistant" element={<AIAssistant />} />
           <Route path="profile" element={<Profile />} />
           <Route path="contribute" element={<Contribute />} />

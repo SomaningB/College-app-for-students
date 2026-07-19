@@ -1,15 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { FiGrid, FiBook, FiMessageSquare, FiUsers, FiUserPlus, FiCpu, FiUser, FiLogOut, FiShield, FiUpload, FiX, FiFolder, FiSearch } from 'react-icons/fi'
+import { FiGrid, FiBook, FiUsers, FiCpu, FiUser, FiLogOut, FiShield, FiUpload, FiX, FiFolder, FiSearch } from 'react-icons/fi'
 
 const studentItems = [
   { to: '/app/dashboard', icon: FiGrid, label: 'Dashboard' },
   { to: '/app/search', icon: FiSearch, label: 'Search' },
   { to: '/app/contribute', icon: FiUpload, label: 'Contribute' },
   { to: '/app/my-notes', icon: FiFolder, label: 'My Notes' },
-  { to: '/app/chat', icon: FiMessageSquare, label: 'Chat' },
-  { to: '/app/friends', icon: FiUserPlus, label: 'Friends' },
   { to: '/app/communities', icon: FiUsers, label: 'Communities' },
   { to: '/app/ai-assistant', icon: FiCpu, label: 'AI Assistant' },
   { to: '/app/profile', icon: FiUser, label: 'Profile' },
