@@ -5,9 +5,9 @@ import { FiArrowRight, FiBook, FiCpu, FiUsers, FiMail, FiUser } from 'react-icon
 
 export default function Landing() {
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <ThreeBackground />
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
         <nav style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '20px 40px', backdropFilter: 'blur(10px)',

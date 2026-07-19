@@ -109,7 +109,7 @@ export default function ThreeBackground() {
       left: 0,
       width: '100%',
       height: '100%',
-      zIndex: -1,
+      zIndex: 0,
       pointerEvents: 'none'
     }}>
       <Canvas camera={{ position: [0, 0, 8], fov: 60 }}>
