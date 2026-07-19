@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">CollegeApp</string>
-    <string name="title_activity_main">CollegeApp</string>
+    <string name="app_name">college-app</string>
+    <string name="title_activity_main">college-app</string>
     <string name="package_name">com.collegeapp.students</string>
     <string name="custom_url_scheme">com.collegeapp.students</string>
 </resources>
