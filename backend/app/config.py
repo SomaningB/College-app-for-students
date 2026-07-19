@@ -14,6 +14,10 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "50"))
 
+USE_HTTPS = os.getenv("USE_HTTPS", "false").lower() == "true"
+SSL_CERT_PATH = os.getenv("SSL_CERT_PATH", "./certs/cert.pem")
+SSL_KEY_PATH = os.getenv("SSL_KEY_PATH", "./certs/key.pem")
+
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 VERIFICATION_TOKEN_EXPIRE_MINUTES = int(os.getenv("VERIFICATION_TOKEN_EXPIRE_MINUTES", "1440"))
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
