@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { adminAPI, streamsAPI } from '../services/api'
-import { FiUserPlus, FiTrash2, FiCopy, FiCheck, FiBook, FiX } from 'react-icons/fi'
+import { FiUserPlus, FiTrash2, FiCopy, FiCheck, FiBook, FiX, FiKey } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 
 const streamSubjects = {
@@ -27,6 +27,7 @@ export default function AdminTeachers() {
   const [editSubjects, setEditSubjects] = useState([])
   const [editStream, setEditStream] = useState('')
   const [editLoading, setEditLoading] = useState(false)
+  const [resetResult, setResetResult] = useState(null)
 
   const streams = [
     { value: 'science', label: 'Science' },
@@ -119,6 +120,15 @@ export default function AdminTeachers() {
     } catch {
       toast.error('Delete failed')
     }
+  }
+
+  const handleResetPassword = async (id) => {
+    if (!confirm('Reset password for this teacher? They will need the new password to log in.')) return
+    try {
+      const res = await adminAPI.resetTeacherPassword(id)
+      setResetResult(res.data)
+      toast.success('Password reset')
+    } catch { toast.error('Reset failed') }
   }
 
   const copyCredentials = () => {
@@ -249,6 +259,23 @@ export default function AdminTeachers() {
         </motion.div>
       )}
 
+      {resetResult && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="card" style={{ padding: 20, marginBottom: 24, border: '1px solid var(--warning)', background: 'rgba(245, 158, 11, 0.05)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: 12, color: 'var(--warning)' }}>Password Reset</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.9rem', marginBottom: 16 }}>
+            <div><strong>User ID:</strong> <code style={{ background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 4 }}>{resetResult.unique_id}</code></div>
+            <div><strong>New Password:</strong> <code style={{ background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 4 }}>{resetResult.new_password}</code></div>
+          </div>
+          <button onClick={() => { navigator.clipboard.writeText(`User ID: ${resetResult.unique_id}\nPassword: ${resetResult.new_password}`); toast.success('Copied') }}
+            style={{ padding: '8px 16px', borderRadius: 8, fontSize: '0.85rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
+              border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FiCopy size={14} /> Copy
+          </button>
+          <button onClick={() => setResetResult(null)} className="btn btn-ghost" style={{ marginLeft: 8, padding: '8px 12px', fontSize: '0.8rem' }}>Dismiss</button>
+        </motion.div>
+      )}
+
       <h3 style={{ fontSize: '1rem', marginBottom: 12, color: 'var(--text-secondary)' }}>
         <FiBook size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />
         All Teachers ({teachers.length})
@@ -272,6 +299,10 @@ export default function AdminTeachers() {
                   <span>· {t.subjects.join(', ')}</span>
                 </div>
               </div>
+              <button onClick={() => handleResetPassword(t.id)}
+                style={{ padding: 8, color: 'var(--warning)' }} title="Reset password">
+                <FiKey size={16} />
+              </button>
               <button onClick={() => startEdit(t)}
                 style={{ padding: 8, color: 'var(--text-muted)' }}>
                 <FiBook size={16} />

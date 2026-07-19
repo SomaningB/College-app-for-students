@@ -6,7 +6,7 @@ import aiofiles
 from bson import ObjectId
 from app.config import UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
 from app.database import get_db
-from app.middleware.auth import get_admin_user
+from app.middleware.auth import get_admin_user, get_current_user
 from passlib.context import CryptContext
 from app.file_validation import validate_file_signature
 
@@ -256,3 +256,83 @@ async def delete_material(material_id: str, admin: dict = Depends(get_admin_user
 
     await db.materials.delete_one({"_id": ObjectId(material_id)})
     return {"message": "Material deleted"}
+
+@router.post("/teachers/{teacher_id}/reset-password")
+async def reset_teacher_password(
+    teacher_id: str,
+    admin: dict = Depends(get_admin_user)
+):
+    import secrets
+    db = get_db()
+    teacher = await db.users.find_one({"_id": ObjectId(teacher_id), "role": "teacher"})
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    new_password = secrets.token_urlsafe(12)
+    await db.users.update_one(
+        {"_id": ObjectId(teacher_id)},
+        {"$set": {"hashed_password": pwd_context.hash(new_password)}}
+    )
+    return {
+        "message": "Password reset successfully",
+        "unique_id": teacher["unique_id"],
+        "new_password": new_password
+    }
+
+@router.get("/leaderboard")
+async def get_leaderboard(admin: dict = Depends(get_admin_user)):
+    db = get_db()
+    students = await db.users.find({"role": "student"}).to_list(500)
+    result = []
+
+    for s in students:
+        sid = str(s["_id"])
+        material_count = await db.materials.count_documents({"contributed_by": sid, "status": "approved"})
+        download_count_pipeline = await db.materials.aggregate([
+            {"$match": {"contributed_by": sid}},
+            {"$group": {"_id": None, "total": {"$sum": "$download_count"}}}
+        ]).to_list(1)
+        downloads = download_count_pipeline[0]["total"] if download_count_pipeline else 0
+        msg_count = await db.messages.count_documents({"sender_id": sid})
+        community_count = await db.communities.count_documents({"members": sid})
+
+        score = material_count * 10 + downloads * 2 + msg_count + community_count * 5
+
+        result.append({
+            "id": sid,
+            "name": s["name"],
+            "unique_id": s["unique_id"],
+            "stream": s.get("stream", ""),
+            "score": score,
+            "materials_contributed": material_count,
+            "total_downloads": downloads,
+            "messages_sent": msg_count,
+            "communities_joined": community_count
+        })
+
+    result.sort(key=lambda x: x["score"], reverse=True)
+    for i, r in enumerate(result):
+        r["rank"] = i + 1
+
+    return result
+
+@router.get("/feedback")
+async def get_all_feedback(admin: dict = Depends(get_admin_user)):
+    db = get_db()
+    feedbacks = await db.feedback.find().sort("created_at", -1).to_list(100)
+    return [{
+        "id": str(f["_id"]),
+        "user_id": f["user_id"],
+        "user_name": f["user_name"],
+        "user_unique_id": f["user_unique_id"],
+        "message": f["message"],
+        "created_at": f["created_at"]
+    } for f in feedbacks]
+
+@router.delete("/feedback/{feedback_id}")
+async def delete_feedback(feedback_id: str, admin: dict = Depends(get_admin_user)):
+    db = get_db()
+    result = await db.feedback.delete_one({"_id": ObjectId(feedback_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    return {"message": "Feedback deleted"}

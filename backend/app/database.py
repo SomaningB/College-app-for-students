@@ -14,6 +14,8 @@ async def connect_db():
     await db.friend_requests.create_index([("from_user_id", 1), ("to_user_id", 1)])
     await db.messages.create_index([("chat_type", 1), ("chat_id", 1), ("timestamp", -1)])
     await db.ai_messages.create_index([("user_id", 1), ("timestamp", 1)])
+    await db.feedback.create_index([("user_id", 1)])
+    await db.feedback.create_index([("created_at", -1)])
 
 async def close_db():
     if client:

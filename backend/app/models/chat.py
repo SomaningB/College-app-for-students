@@ -24,6 +24,7 @@ class FriendRequestResponse(BaseModel):
 class CommunityCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    member_ids: Optional[List[str]] = None
 
     @field_validator("name")
     @classmethod

@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
 import { communitiesAPI } from '../services/api'
-import { FiUsers, FiPlus, FiSearch, FiExternalLink, FiMessageSquare } from 'react-icons/fi'
+import { FiUsers, FiPlus, FiSearch, FiExternalLink, FiMessageSquare, FiTrash2 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 
 export default function Communities() {
+  const { user } = useAuth()
   const [tab, setTab] = useState('mine')
   const [mine, setMine] = useState([])
   const [explore, setExplore] = useState([])
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState({ name: '', description: '' })
+  const [memberInput, setMemberInput] = useState('')
+  const [memberIds, setMemberIds] = useState([])
   const [search, setSearch] = useState('')
 
   useEffect(() => { loadAll() }, [])
@@ -29,10 +33,14 @@ export default function Communities() {
   const handleCreate = async (e) => {
     e.preventDefault()
     try {
-      await communitiesAPI.create(createForm)
+      const data = { ...createForm }
+      if (memberIds.length > 0) data.member_ids = memberIds
+      await communitiesAPI.create(data)
       toast.success('Community created!')
       setShowCreate(false)
       setCreateForm({ name: '', description: '' })
+      setMemberInput('')
+      setMemberIds([])
       loadAll()
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to create')
@@ -46,6 +54,29 @@ export default function Communities() {
       loadAll()
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to join')
+    }
+  }
+
+  const addMemberId = () => {
+    const id = memberInput.trim().toUpperCase()
+    if (!id) return
+    if (memberIds.includes(id)) { toast.error('Already added'); return }
+    setMemberIds(prev => [...prev, id])
+    setMemberInput('')
+  }
+
+  const removeMemberId = (id) => {
+    setMemberIds(prev => prev.filter(x => x !== id))
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this community and all its messages? This cannot be undone.')) return
+    try {
+      await communitiesAPI.delete(id)
+      toast.success('Community deleted')
+      loadAll()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to delete')
     }
   }
 
@@ -72,11 +103,34 @@ export default function Communities() {
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
           className="card" style={{ padding: 24, marginBottom: 24, overflow: 'hidden' }}>
           <h3 style={{ marginBottom: 16 }}>Create Community</h3>
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 400 }}>
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 500 }}>
             <input type="text" value={createForm.name} onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
               placeholder="Community name" className="input-field" required />
             <input type="text" value={createForm.description} onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))}
               placeholder="Description (optional)" className="input-field" />
+            <div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>Add members by Student ID (optional):</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input type="text" value={memberInput} onChange={e => setMemberInput(e.target.value.toUpperCase())}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemberId() } }}
+                  placeholder="Enter student ID (e.g. STU00123)" className="input-field" style={{ flex: 1 }} />
+                <button type="button" onClick={addMemberId} className="btn" style={{ padding: '10px 16px', flexShrink: 0 }}>Add</button>
+              </div>
+              {memberIds.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {memberIds.map(id => (
+                    <span key={id} style={{
+                      padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem',
+                      background: 'var(--accent-glow)', color: 'var(--accent)',
+                      display: 'flex', alignItems: 'center', gap: 6
+                    }}>
+                      {id}
+                      <button type="button" onClick={() => removeMemberId(id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 0, fontSize: '0.8rem' }}>x</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
             <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
               <FiUsers /> Create
             </button>
@@ -122,9 +176,17 @@ export default function Communities() {
                     {c.member_count} members · created by {c.created_by_name}
                   </div>
                 </div>
-                <Link to={`/communities/${c.id}`} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                  <FiMessageSquare size={14} /> Chat
-                </Link>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {c.created_by === user?.id && (
+                    <button onClick={() => handleDelete(c.id)}
+                      className="btn" style={{ color: 'var(--error)', padding: '8px 12px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
+                      <FiTrash2 size={14} />
+                    </button>
+                  )}
+                  <Link to={`/communities/${c.id}`} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                    <FiMessageSquare size={14} /> Chat
+                  </Link>
+                </div>
               </motion.div>
             ))}
           </div>

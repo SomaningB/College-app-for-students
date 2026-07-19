@@ -14,6 +14,9 @@ import MyNotes from './pages/MyNotes'
 import Search from './pages/Search'
 import Landing from './pages/Landing'
 import Terms from './pages/Terms'
+import Leaderboard from './pages/Leaderboard'
+import Feedback from './pages/Feedback'
+import AdminFeedback from './pages/AdminFeedback'
 import TeacherDashboard from './pages/TeacherDashboard'
 import AdminTeachers from './pages/AdminTeachers'
 import AdminDashboard from './pages/AdminDashboard'
@@ -56,11 +59,14 @@ export default function App() {
           <Route path="contribute" element={<Contribute />} />
           <Route path="my-notes" element={<MyNotes />} />
           <Route path="search" element={<Search />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="feedback" element={<Feedback />} />
           <Route path="teacher" element={<TeacherDashboard />} />
           <Route path="admin/teachers" element={<AdminTeachers />} />
           <Route path="admin" element={<AdminDashboard />} />
           <Route path="admin/materials" element={<AdminMaterials />} />
           <Route path="admin/users" element={<AdminUsers />} />
+          <Route path="admin/feedback" element={<AdminFeedback />} />
         </Route>
       </Routes>
     </AnimatePresence>

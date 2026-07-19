@@ -66,7 +66,8 @@ export const communitiesAPI = {
   getMine: () => api.get('/communities/'),
   explore: () => api.get('/communities/explore'),
   join: (id) => api.post(`/communities/${id}/join`),
-  getMembers: (id) => api.get(`/communities/${id}/members`)
+  getMembers: (id) => api.get(`/communities/${id}/members`),
+  delete: (id) => api.delete(`/communities/${id}`)
 }
 
 export const aiAPI = {
@@ -123,7 +124,11 @@ export const adminAPI = {
   updateTeacher: (id, formData) => api.put(`/admin/teachers/${id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  deleteTeacher: (id) => api.delete(`/admin/teachers/${id}`)
+  deleteTeacher: (id) => api.delete(`/admin/teachers/${id}`),
+  resetTeacherPassword: (id) => api.post(`/admin/teachers/${id}/reset-password`),
+  getLeaderboard: () => api.get('/admin/leaderboard'),
+  getFeedback: () => api.get('/admin/feedback'),
+  deleteFeedback: (id) => api.delete(`/admin/feedback/${id}`)
 }
 
 export const teacherAPI = {
@@ -132,6 +137,11 @@ export const teacherAPI = {
   }),
   getNotes: () => api.get('/teacher/notes'),
   deleteNote: (id) => api.delete(`/teacher/notes/${id}`)
+}
+
+export const feedbackAPI = {
+  submit: (message) => api.post('/feedback/', { message }),
+  getMine: () => api.get('/feedback/mine')
 }
 
 export default api

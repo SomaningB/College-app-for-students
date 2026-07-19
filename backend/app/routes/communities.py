@@ -3,7 +3,7 @@ from datetime import datetime
 from bson import ObjectId
 from app.database import get_db
 from app.models.chat import CommunityCreate, CommunityResponse
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, get_admin_user
 
 router = APIRouter()
 
@@ -25,12 +25,22 @@ async def create_community(
     if user_community_count >= 10:
         raise HTTPException(status_code=400, detail="Maximum 10 communities per user")
 
+    members = [str(current_user["_id"])]
+
+    if data.member_ids:
+        for uid in data.member_ids:
+            if uid == current_user["unique_id"]:
+                continue
+            user = await db.users.find_one({"unique_id": uid})
+            if user and str(user["_id"]) not in members:
+                members.append(str(user["_id"]))
+
     community = {
         "name": data.name,
         "description": data.description or "",
         "created_by": str(current_user["_id"]),
         "created_by_name": current_user["name"],
-        "members": [str(current_user["_id"])],
+        "members": members,
         "created_at": datetime.utcnow()
     }
 
@@ -42,7 +52,7 @@ async def create_community(
         "description": community["description"],
         "created_by": community["created_by"],
         "created_by_name": community["created_by_name"],
-        "member_count": 1,
+        "member_count": len(members),
         "members": community["members"],
         "created_at": community["created_at"]
     }
@@ -130,3 +140,25 @@ async def get_community_members(
             })
 
     return members
+
+@router.delete("/{community_id}")
+async def delete_community(
+    community_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    db = get_db()
+    community = await db.communities.find_one({"_id": ObjectId(community_id)})
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    current_id = str(current_user["_id"])
+    is_creator = community["created_by"] == current_id
+    is_admin = current_user.get("role") == "admin"
+
+    if not is_creator and not is_admin:
+        raise HTTPException(status_code=403, detail="Only the creator or admin can delete this community")
+
+    await db.messages.delete_many({"chat_type": "community", "chat_id": community_id})
+    await db.communities.delete_one({"_id": ObjectId(community_id)})
+
+    return {"message": "Community and all messages deleted"}

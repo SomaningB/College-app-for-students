@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { FiGrid, FiBook, FiUsers, FiUserPlus, FiCpu, FiUser, FiLogOut, FiShield, FiUpload, FiX, FiFolder, FiSearch } from 'react-icons/fi'
+import { FiGrid, FiBook, FiUsers, FiUserPlus, FiCpu, FiUser, FiLogOut, FiShield, FiUpload, FiX, FiFolder, FiSearch, FiSend, FiAward } from 'react-icons/fi'
 
 const studentItems = [
   { to: '/app/dashboard', icon: FiGrid, label: 'Dashboard' },
@@ -9,7 +9,9 @@ const studentItems = [
   { to: '/app/contribute', icon: FiUpload, label: 'Contribute' },
   { to: '/app/my-notes', icon: FiFolder, label: 'My Notes' },
   { to: '/app/communities', icon: FiUsers, label: 'Communities' },
+  { to: '/app/leaderboard', icon: FiAward, label: 'Leaderboard' },
   { to: '/app/ai-assistant', icon: FiCpu, label: 'AI Assistant' },
+  { to: '/app/feedback', icon: FiSend, label: 'Feedback' },
   { to: '/app/profile', icon: FiUser, label: 'Profile' },
 ]
 
@@ -18,8 +20,9 @@ const teacherItems = [
   { to: '/app/search', icon: FiSearch, label: 'Search' },
   { to: '/app/contribute', icon: FiUpload, label: 'Contribute' },
   { to: '/app/my-notes', icon: FiFolder, label: 'My Notes' },
-  { to: '/app/ai-assistant', icon: FiCpu, label: 'AI Assistant' },
   { to: '/app/communities', icon: FiUsers, label: 'Communities' },
+  { to: '/app/leaderboard', icon: FiAward, label: 'Leaderboard' },
+  { to: '/app/ai-assistant', icon: FiCpu, label: 'AI Assistant' },
 ]
 
 const adminItems = [
@@ -27,6 +30,7 @@ const adminItems = [
   { to: '/app/admin/materials', icon: FiBook, label: 'Materials' },
   { to: '/app/admin/users', icon: FiUsers, label: 'Students' },
   { to: '/app/admin/teachers', icon: FiUserPlus, label: 'Teachers' },
+  { to: '/app/admin/feedback', icon: FiSend, label: 'Feedback' },
 ]
 
 export default function Sidebar({ isOpen, onToggle }) {
