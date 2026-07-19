@@ -16,7 +16,7 @@ async def send_friend_request(
 
     target = await db.users.find_one({"unique_id": req.to_unique_id})
     if not target:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found or request could not be sent")
 
     target_id = str(target["_id"])
     current_id = str(current_user["_id"])

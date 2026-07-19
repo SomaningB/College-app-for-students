@@ -7,6 +7,7 @@ from bson import ObjectId
 from app.config import UPLOAD_DIR
 from app.database import get_db
 from app.middleware.auth import get_current_user
+from app.file_validation import validate_file_signature
 
 router = APIRouter()
 
@@ -96,9 +97,17 @@ async def upload_note(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"File type {ext} not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
 
+    if folder_id:
+        folder = await db.user_folders.find_one({"_id": ObjectId(folder_id), "user_id": str(current_user["_id"])})
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
+
     content = await file.read()
     if len(content) > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large. Max 50MB")
+
+    if not validate_file_signature(content, ext):
+        raise HTTPException(status_code=400, detail=f"File content does not match extension {ext}")
 
     file_name = f"{uuid.uuid4()}{ext}"
     filepath = os.path.join(NOTES_DIR, file_name)
@@ -136,6 +145,11 @@ async def save_material_to_notes(
     material = await db.materials.find_one({"_id": ObjectId(material_id), "status": "approved"})
     if not material:
         raise HTTPException(status_code=404, detail="Material not found")
+
+    if folder_id:
+        folder = await db.user_folders.find_one({"_id": ObjectId(folder_id), "user_id": str(current_user["_id"])})
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
 
     import shutil
     src_filename = os.path.basename(material["file_url"])

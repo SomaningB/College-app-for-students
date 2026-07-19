@@ -7,6 +7,7 @@ from app.config import UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
 from app.database import get_db
 from app.models.material import MaterialCreate, MaterialResponse, MaterialStatus
 from app.middleware.auth import get_current_user, get_admin_user
+from app.file_validation import validate_file_signature
 
 router = APIRouter()
 
@@ -79,6 +80,9 @@ async def contribute_material(
     if len(content) > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"File too large. Max {MAX_UPLOAD_SIZE_MB}MB")
 
+    if not validate_file_signature(content, ext):
+        raise HTTPException(status_code=400, detail=f"File content does not match extension {ext}")
+
     async with aiofiles.open(filepath, "wb") as f:
         await f.write(content)
 
@@ -105,10 +109,14 @@ async def contribute_material(
 
     result = await db.materials.insert_one(material)
 
-    await db.users.update_one(
+    update_result = await db.users.update_one(
         {"_id": current_user["_id"]},
         {"$inc": {"pending_uploads": 1}}
     )
+
+    if update_result.modified_count == 0:
+        await db.materials.delete_one({"_id": result.inserted_id})
+        raise HTTPException(status_code=500, detail="Failed to update upload count")
 
     return {"id": str(result.inserted_id), "message": "Material submitted for approval"}
 

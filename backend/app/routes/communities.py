@@ -21,6 +21,10 @@ async def create_community(
     if existing:
         raise HTTPException(status_code=400, detail="You already have a community with this name")
 
+    user_community_count = await db.communities.count_documents({"created_by": str(current_user["_id"])})
+    if user_community_count >= 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 communities per user")
+
     community = {
         "name": data.name,
         "description": data.description or "",

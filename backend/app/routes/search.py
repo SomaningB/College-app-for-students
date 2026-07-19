@@ -46,8 +46,8 @@ async def global_search(
 
     try:
         materials = await db.materials.find(material_query).sort("uploaded_at", -1).to_list(50)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Search failed. Please try again.")
 
     for m in materials:
         result_materials.append({

@@ -5,26 +5,41 @@ class ChatWebSocket {
     this.reconnectAttempts = 0
     this.maxReconnectAttempts = 5
     this.isConnected = false
+    this.isAuthenticated = false
+    this.pendingToken = null
+    this.pendingMessages = []
   }
 
   connect(token) {
     if (this.ws?.readyState === WebSocket.OPEN) return
 
+    this.isAuthenticated = false
+    this.pendingToken = token
+
     const base = import.meta.env.VITE_API_URL || ''
     const protocol = base.startsWith('https') ? 'wss:' : 'ws:'
     const host = base.replace(/^https?:\/\//, '')
-    const url = host ? `${protocol}//${host}/ws/chat?token=${token}` : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat?token=${token}`
+    const url = host ? `${protocol}//${host}/ws/chat` : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat`
     this.ws = new WebSocket(url)
 
     this.ws.onopen = () => {
-      this.isConnected = true
       this.reconnectAttempts = 0
-      this.emit('connected')
+      this.ws.send(JSON.stringify({ type: 'auth', token: this.pendingToken }))
     }
 
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
+        if (data.type === 'auth_ok') {
+          this.isConnected = true
+          this.isAuthenticated = true
+          this.emit('connected')
+          for (const msg of this.pendingMessages) {
+            this.ws.send(JSON.stringify(msg))
+          }
+          this.pendingMessages = []
+          return
+        }
         this.emit(data.type, data.data)
       } catch (e) {
         console.error('WS parse error:', e)
@@ -33,10 +48,11 @@ class ChatWebSocket {
 
     this.ws.onclose = () => {
       this.isConnected = false
+      this.isAuthenticated = false
       this.emit('disconnected')
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++
-        setTimeout(() => this.connect(token), 2000 * this.reconnectAttempts)
+        setTimeout(() => this.connect(this.pendingToken), 2000 * this.reconnectAttempts)
       }
     }
 
@@ -51,9 +67,15 @@ class ChatWebSocket {
       this.ws = null
     }
     this.isConnected = false
+    this.isAuthenticated = false
+    this.pendingMessages = []
   }
 
   send(data) {
+    if (!this.isAuthenticated) {
+      this.pendingMessages.push(data)
+      return
+    }
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
     }

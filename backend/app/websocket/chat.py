@@ -1,15 +1,29 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.config import JWT_SECRET, JWT_ALGORITHM
 from app.database import get_db
 import json
 import re
+import time
+import asyncio
 
 router = APIRouter()
 
 connected_clients = {}
+ws_message_tracker = {}
+ws_auth_tokens = {}
+
+def check_ws_rate_limit(user_id: str) -> bool:
+    now = time.time()
+    if user_id not in ws_message_tracker:
+        ws_message_tracker[user_id] = []
+    ws_message_tracker[user_id] = [t for t in ws_message_tracker[user_id] if now - t < 10]
+    if len(ws_message_tracker[user_id]) >= 15:
+        return False
+    ws_message_tracker[user_id].append(now)
+    return True
 
 def sanitize_text(text: str) -> str:
     text = re.sub(r'<[^>]+>', '', text)
@@ -18,6 +32,10 @@ def sanitize_text(text: str) -> str:
     if len(text) > 2000:
         text = text[:2000]
     return text
+
+def sanitize_name(name: str) -> str:
+    name = re.sub(r'<[^>]+>', '', name)
+    return name.strip()[:100]
 
 async def get_user_from_token(token: str):
     try:
@@ -32,14 +50,32 @@ async def get_user_from_token(token: str):
         return None
 
 @router.websocket("/ws/chat")
-async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
-    user = await get_user_from_token(token)
-    if not user:
+async def chat_websocket(websocket: WebSocket):
+    await websocket.accept()
+    user = None
+    user_id = None
+
+    try:
+        auth_msg = await asyncio.wait_for(websocket.receive_text(), timeout=10)
+        auth_data = json.loads(auth_msg)
+        if auth_data.get("type") != "auth" or not auth_data.get("token"):
+            await websocket.send_text(json.dumps({"type": "error", "message": "Authentication required"}))
+            await websocket.close(code=4001)
+            return
+        user = await get_user_from_token(auth_data["token"])
+        if not user:
+            await websocket.send_text(json.dumps({"type": "error", "message": "Invalid token"}))
+            await websocket.close(code=4001)
+            return
+        user_id = str(user["_id"])
+        await websocket.send_text(json.dumps({"type": "auth_ok"}))
+
+    except asyncio.TimeoutError:
         await websocket.close(code=4001)
         return
-
-    user_id = str(user["_id"])
-    await websocket.accept()
+    except Exception:
+        await websocket.close(code=4001)
+        return
 
     connected_clients[user_id] = [ws for ws in connected_clients.get(user_id, []) if ws != websocket]
     connected_clients[user_id].append(websocket)
@@ -49,6 +85,14 @@ async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
             data = await websocket.receive_text()
             message = json.loads(data)
             msg_type = message.get("type")
+
+            if msg_type in ("dm_send", "community_send"):
+                if not check_ws_rate_limit(user_id):
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": "Too many messages. Please slow down."
+                    }))
+                    continue
 
             if msg_type == "dm_send":
                 to_unique_id = message.get("to_unique_id")
@@ -75,7 +119,7 @@ async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
 
                 msg_doc = {
                     "sender_id": user_id,
-                    "sender_name": user["name"],
+                    "sender_name": sanitize_name(user["name"]),
                     "chat_type": "dm",
                     "chat_id": chat_id,
                     "content": content,
@@ -89,7 +133,7 @@ async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
                     "data": {
                         "id": str(result.inserted_id),
                         "sender_id": user_id,
-                        "sender_name": user["name"],
+                        "sender_name": sanitize_name(user["name"]),
                         "chat_type": "dm",
                         "chat_id": chat_id,
                         "content": content,
@@ -137,7 +181,7 @@ async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
 
                 msg_doc = {
                     "sender_id": user_id,
-                    "sender_name": user["name"],
+                    "sender_name": sanitize_name(user["name"]),
                     "chat_type": "community",
                     "chat_id": community_id,
                     "content": content,
@@ -151,7 +195,7 @@ async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
                     "data": {
                         "id": str(result.inserted_id),
                         "sender_id": user_id,
-                        "sender_name": user["name"],
+                        "sender_name": sanitize_name(user["name"]),
                         "chat_type": "community",
                         "chat_id": community_id,
                         "content": content,
@@ -180,7 +224,7 @@ async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
                     "type": "typing",
                     "data": {
                         "user_id": user_id,
-                        "user_name": user["name"],
+                        "user_name": sanitize_name(user["name"]),
                         "chat_type": chat_type,
                         "chat_id": chat_id
                     }
@@ -223,6 +267,23 @@ async def chat_websocket(websocket: WebSocket, token: str = Query(...)):
                 limit = 50
 
                 db = get_db()
+
+                if chat_type == "dm":
+                    if user_id not in chat_id:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "message": "Access denied"
+                        }))
+                        continue
+                elif chat_type == "community":
+                    community = await db.communities.find_one({"_id": ObjectId(chat_id)})
+                    if not community or user_id not in community.get("members", []):
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "message": "Access denied"
+                        }))
+                        continue
+
                 skip = (page - 1) * limit
 
                 cursor = db.messages.find({

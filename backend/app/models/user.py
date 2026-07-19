@@ -1,16 +1,35 @@
-from pydantic import BaseModel, EmailStr
+import re
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List
 from datetime import datetime
 
 class UserCreate(BaseModel):
     name: str
-    email: str
+    email: EmailStr
     password: str
     stream: str
     combination: Optional[str] = None
     puc: Optional[str] = None
     subjects: List[str] = []
     languages: List[str] = []
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 1:
+            raise ValueError("Name cannot be empty")
+        if len(v) > 100:
+            raise ValueError("Name must be at most 100 characters")
+        v = re.sub(r'<[^>]+>', '', v)
+        return v
 
 class UserLogin(BaseModel):
     email: str

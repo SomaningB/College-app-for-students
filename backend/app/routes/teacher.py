@@ -7,6 +7,7 @@ from bson import ObjectId
 from app.config import UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
 from app.database import get_db
 from app.middleware.auth import get_teacher_user
+from app.file_validation import validate_file_signature
 
 router = APIRouter()
 
@@ -31,6 +32,9 @@ async def teacher_upload(
     content = await file.read()
     if len(content) > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"File too large. Max {MAX_UPLOAD_SIZE_MB}MB")
+
+    if not validate_file_signature(content, ext):
+        raise HTTPException(status_code=400, detail=f"File content does not match extension {ext}")
 
     async with aiofiles.open(filepath, "wb") as f:
         await f.write(content)

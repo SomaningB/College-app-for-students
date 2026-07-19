@@ -8,6 +8,7 @@ from app.config import UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
 from app.database import get_db
 from app.middleware.auth import get_admin_user
 from passlib.context import CryptContext
+from app.file_validation import validate_file_signature
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -29,12 +30,14 @@ async def seed_admin():
     db = get_db()
     existing = await db.users.find_one({"role": "admin"})
     if existing:
-        return {"message": "Admin already exists", "email": existing["email"]}
+        raise HTTPException(status_code=400, detail="Admin already exists")
 
+    import secrets, string
+    password = secrets.token_urlsafe(24)
     admin = {
         "name": "Admin",
         "email": "admin@collegeapp.com",
-        "hashed_password": pwd_context.hash("admin123"),
+        "hashed_password": pwd_context.hash(password),
         "unique_id": "000000",
         "stream": "",
         "subjects": [],
@@ -43,7 +46,7 @@ async def seed_admin():
         "created_at": datetime.utcnow()
     }
     await db.users.insert_one(admin)
-    return {"message": "Admin created", "email": "admin@collegeapp.com", "password": "admin123"}
+    return {"message": "Admin created. Save these credentials securely - they cannot be recovered.", "email": "admin@collegeapp.com", "password": password}
 
 @router.post("/create-teacher")
 async def create_teacher(
@@ -52,10 +55,14 @@ async def create_teacher(
     stream: str = Form(...),
     admin: dict = Depends(get_admin_user)
 ):
-    import random, string
+    import secrets, re
+    name = name.strip()
+    name = re.sub(r'<[^>]+>', '', name)
+    if len(name) < 1 or len(name) > 100:
+        raise HTTPException(status_code=400, detail="Name must be between 1 and 100 characters")
     db = get_db()
     unique_id = await generate_unique_id(db)
-    password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    password = secrets.token_urlsafe(12)
     subject_list = [s.strip() for s in subjects.split(",") if s.strip()]
 
     teacher = {
@@ -189,6 +196,9 @@ async def admin_upload_material(
     content = await file.read()
     if len(content) > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"File too large. Max {MAX_UPLOAD_SIZE_MB}MB")
+
+    if not validate_file_signature(content, ext):
+        raise HTTPException(status_code=400, detail=f"File content does not match extension {ext}")
 
     async with aiofiles.open(filepath, "wb") as f:
         await f.write(content)

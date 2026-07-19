@@ -12,6 +12,9 @@ from app.services.email import send_verification_email
 
 router = APIRouter()
 
+verify_attempts = {}
+MAX_VERIFY_ATTEMPTS = 5
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
@@ -100,6 +103,7 @@ async def register(user_data: UserCreate, background_tasks: BackgroundTasks):
 @router.post("/verify-email")
 async def verify_email(req: VerifyEmailRequest):
     db = get_db()
+
     user = await db.users.find_one({
         "email": req.email,
         "email_verified": False
@@ -108,11 +112,30 @@ async def verify_email(req: VerifyEmailRequest):
     if not user:
         raise HTTPException(status_code=400, detail="No unverified account found with this email")
 
-    if user.get("verification_code") != req.code:
-        raise HTTPException(status_code=400, detail="Invalid verification code")
+    now = datetime.utcnow()
+    attempts_key = f"verify:{req.email}"
+    attempt_data = verify_attempts.get(attempts_key)
+    if attempt_data:
+        if attempt_data["count"] >= MAX_VERIFY_ATTEMPTS:
+            if now - attempt_data["locked_until"] < timedelta(minutes=15):
+                raise HTTPException(status_code=429, detail="Too many incorrect attempts. Try again in 15 minutes.")
+            else:
+                del verify_attempts[attempts_key]
 
-    if user.get("verification_code_expires") and user["verification_code_expires"] < datetime.utcnow():
+    if user.get("verification_code_expires") and user["verification_code_expires"] < now:
         raise HTTPException(status_code=400, detail="Verification code has expired. Request a new one.")
+
+    if user.get("verification_code") != req.code:
+        if attempts_key not in verify_attempts:
+            verify_attempts[attempts_key] = {"count": 0, "locked_until": now}
+        verify_attempts[attempts_key]["count"] += 1
+        if verify_attempts[attempts_key]["count"] >= MAX_VERIFY_ATTEMPTS:
+            verify_attempts[attempts_key]["locked_until"] = now
+            raise HTTPException(status_code=429, detail="Too many incorrect attempts. Try again in 15 minutes.")
+        remaining = MAX_VERIFY_ATTEMPTS - verify_attempts[attempts_key]["count"]
+        raise HTTPException(status_code=400, detail=f"Invalid verification code. {remaining} attempt(s) remaining.")
+
+    verify_attempts.pop(attempts_key, None)
 
     await db.users.update_one(
         {"_id": user["_id"]},
@@ -203,7 +226,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     }
 
 @router.get("/users/search")
-async def search_users(query: str = ""):
+async def search_users(query: str = "", current_user: dict = Depends(get_current_user)):
     db = get_db()
     users = await db.users.find(
         {"$or": [
@@ -220,7 +243,7 @@ async def search_users(query: str = ""):
     } for u in users]
 
 @router.get("/users/by-id/{unique_id}")
-async def get_user_by_unique_id(unique_id: str):
+async def get_user_by_unique_id(unique_id: str, current_user: dict = Depends(get_current_user)):
     db = get_db()
     user = await db.users.find_one({"unique_id": unique_id})
     if not user:
