@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node obfuscate.js",
+    "build:apk": "VITE_API_URL=https://college-app-backend-q8a9.onrender.com vite build && node obfuscate.js",
     "preview": "vite preview"
   },
   "dependencies": {
