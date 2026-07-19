@@ -20,6 +20,11 @@ class ChatWebSocket {
       cachedWsUrl = directWsUrl
       return cachedWsUrl
     }
+    const host = window.location.host
+    if (host.endsWith('.vercel.app')) {
+      cachedWsUrl = 'wss://college-app-backend-q8a9.onrender.com/ws/chat'
+      return cachedWsUrl
+    }
     try {
       const base = import.meta.env.VITE_API_URL || ''
       const configUrl = base ? `${base}/app-config` : '/api/app-config'
@@ -28,7 +33,6 @@ class ChatWebSocket {
       cachedWsUrl = config.ws_url
       return cachedWsUrl
     } catch {
-      const host = window.location.host
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       return `${protocol}//${host}/ws/chat`
     }
