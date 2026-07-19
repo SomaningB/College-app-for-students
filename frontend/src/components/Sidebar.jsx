@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { FiGrid, FiBook, FiUsers, FiCpu, FiUser, FiLogOut, FiShield, FiUpload, FiX, FiFolder, FiSearch } from 'react-icons/fi'
+import { FiGrid, FiBook, FiUsers, FiUserPlus, FiCpu, FiUser, FiLogOut, FiShield, FiUpload, FiX, FiFolder, FiSearch } from 'react-icons/fi'
 
 const studentItems = [
   { to: '/app/dashboard', icon: FiGrid, label: 'Dashboard' },
