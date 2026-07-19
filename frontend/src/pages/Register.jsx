@@ -278,7 +278,13 @@ export default function Register() {
 
           {step < steps.length - 1 ? (
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              onClick={() => setStep(s => s + 1)}
+              onClick={() => {
+                if (step === 0 && (!form.name.trim() || !form.email.trim() || !form.password.trim())) {
+                  toast.error('Please fill in all fields correctly before proceeding')
+                  return
+                }
+                setStep(s => s + 1)
+              }}
               disabled={(step === 1 && (!form.stream || !form.puc)) || (step === 2 && !form.combination && form.subjects.length === 0)}
               className="btn btn-primary">
               Next <FiChevronRight />

@@ -279,6 +279,27 @@ async def reset_teacher_password(
         "new_password": new_password
     }
 
+@router.put("/teachers/{teacher_id}/set-password")
+async def set_teacher_password(
+    teacher_id: str,
+    data: dict,
+    admin: dict = Depends(get_admin_user)
+):
+    db = get_db()
+    teacher = await db.users.find_one({"_id": ObjectId(teacher_id), "role": "teacher"})
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    new_password = (data.get("password") or "").strip()
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    await db.users.update_one(
+        {"_id": ObjectId(teacher_id)},
+        {"$set": {"hashed_password": pwd_context.hash(new_password)}}
+    )
+    return {"message": "Password updated successfully"}
+
 @router.get("/leaderboard")
 async def get_leaderboard(admin: dict = Depends(get_admin_user)):
     db = get_db()

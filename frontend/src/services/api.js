@@ -33,6 +33,8 @@ export const authAPI = {
   me: () => api.get('/auth/me'),
   verifyEmail: (email, code) => api.post('/auth/verify-email', { email, code }),
   resendVerification: (email) => api.post('/auth/resend-verification', { email }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (email, code, password) => api.post('/auth/reset-password', { email, code, password }),
   searchUsers: (query) => api.get(`/auth/users/search?query=${query}`),
   getUserById: (id) => api.get(`/auth/users/by-id/${id}`)
 }
@@ -126,6 +128,7 @@ export const adminAPI = {
   }),
   deleteTeacher: (id) => api.delete(`/admin/teachers/${id}`),
   resetTeacherPassword: (id) => api.post(`/admin/teachers/${id}/reset-password`),
+  setTeacherPassword: (id, password) => api.put(`/admin/teachers/${id}/set-password`, { password }),
   getLeaderboard: () => api.get('/admin/leaderboard'),
   getFeedback: () => api.get('/admin/feedback'),
   deleteFeedback: (id) => api.delete(`/admin/feedback/${id}`)
@@ -142,6 +145,10 @@ export const teacherAPI = {
 export const feedbackAPI = {
   submit: (message) => api.post('/feedback/', { message }),
   getMine: () => api.get('/feedback/mine')
+}
+
+export const leaderboardAPI = {
+  get: () => api.get('/leaderboard/')
 }
 
 export default api

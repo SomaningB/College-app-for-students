@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { adminAPI, streamsAPI } from '../services/api'
-import { FiUserPlus, FiTrash2, FiCopy, FiCheck, FiBook, FiX, FiKey } from 'react-icons/fi'
+import { FiUserPlus, FiTrash2, FiCopy, FiCheck, FiBook, FiX, FiKey, FiEdit2 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 
 const streamSubjects = {
@@ -28,6 +28,9 @@ export default function AdminTeachers() {
   const [editStream, setEditStream] = useState('')
   const [editLoading, setEditLoading] = useState(false)
   const [resetResult, setResetResult] = useState(null)
+  const [setPasswordModal, setSetPasswordModal] = useState(null)
+  const [setPasswordValue, setSetPasswordValue] = useState('')
+  const [setPasswordLoading, setSetPasswordLoading] = useState(false)
 
   const streams = [
     { value: 'science', label: 'Science' },
@@ -129,6 +132,21 @@ export default function AdminTeachers() {
       setResetResult(res.data)
       toast.success('Password reset')
     } catch { toast.error('Reset failed') }
+  }
+
+  const handleSetPassword = async () => {
+    if (!setPasswordValue.trim() || setPasswordValue.length < 8) {
+      toast.error('Password must be at least 8 characters')
+      return
+    }
+    setSetPasswordLoading(true)
+    try {
+      await adminAPI.setTeacherPassword(setPasswordModal.id, setPasswordValue)
+      toast.success('Password updated for ' + setPasswordModal.name)
+      setSetPasswordModal(null)
+      setSetPasswordValue('')
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to set password') }
+    finally { setSetPasswordLoading(false) }
   }
 
   const copyCredentials = () => {
@@ -299,6 +317,10 @@ export default function AdminTeachers() {
                   <span>· {t.subjects.join(', ')}</span>
                 </div>
               </div>
+              <button onClick={() => setSetPasswordModal(t)}
+                style={{ padding: 8, color: 'var(--accent)' }} title="Set password">
+                <FiEdit2 size={16} />
+              </button>
               <button onClick={() => handleResetPassword(t.id)}
                 style={{ padding: 8, color: 'var(--warning)' }} title="Reset password">
                 <FiKey size={16} />
@@ -314,6 +336,34 @@ export default function AdminTeachers() {
             </div>
           ))}
         </div>
+      )}
+      {setPasswordModal && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: 20 }}
+          onClick={() => { setSetPasswordModal(null); setSetPasswordValue('') }}>
+          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+            className="card" style={{ maxWidth: 400, width: '100%', padding: 24 }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: 4 }}>Set Password</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+              Set a custom password for <strong>{setPasswordModal.name}</strong> ({setPasswordModal.unique_id})
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input type="password" value={setPasswordValue}
+                onChange={e => setSetPasswordValue(e.target.value)}
+                className="input-field" placeholder="New password (min 8 chars)" />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { setSetPasswordModal(null); setSetPasswordValue('') }}
+                  className="btn btn-ghost" style={{ flex: 1 }}>Cancel</button>
+                <button onClick={handleSetPassword} disabled={setPasswordLoading || setPasswordValue.length < 8}
+                  className="btn btn-primary" style={{ flex: 1 }}>
+                  {setPasswordLoading ? 'Saving...' : 'Save Password'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   )

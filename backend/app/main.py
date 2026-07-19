@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 from app.database import connect_db, close_db
-from app.routes import auth, materials, friends, communities, ai, admin, user_notes, search, teacher, feedback
+from app.routes import auth, materials, friends, communities, ai, admin, user_notes, search, teacher, feedback, leaderboard
 from app.websocket.chat import router as chat_ws
 from app.config import UPLOAD_DIR
 from app.ratelimit import rate_limiter
@@ -131,6 +131,7 @@ app.include_router(user_notes.router, prefix="/api/user-notes", tags=["User Note
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(teacher.router, prefix="/api/teacher", tags=["Teacher"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
+app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["Leaderboard"])
 app.include_router(chat_ws)
 
 @app.exception_handler(Exception)

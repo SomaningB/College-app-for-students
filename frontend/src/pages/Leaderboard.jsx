@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { adminAPI } from '../services/api'
+import { leaderboardAPI } from '../services/api'
 import { FiAward, FiCpu, FiDownload, FiMessageSquare, FiUsers, FiSearch } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 
@@ -16,7 +16,7 @@ export default function Leaderboard() {
 
   const loadData = async () => {
     try {
-      const res = await adminAPI.getLeaderboard()
+      const res = await leaderboardAPI.get()
       setData(res.data)
     } catch { toast.error('Failed to load leaderboard') }
     finally { setLoading(false) }

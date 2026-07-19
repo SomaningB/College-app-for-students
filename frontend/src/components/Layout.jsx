@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Sidebar from './Sidebar'
-import MobileNav from './MobileNav'
 import ThreeBackground from './ThreeBackground'
 import { FiMenu } from 'react-icons/fi'
 
@@ -12,33 +11,31 @@ export default function Layout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
       <ThreeBackground />
-      {!sidebarOpen && (
-        <motion.button
-          onClick={() => setSidebarOpen(true)}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          style={{
-            position: 'fixed',
-            top: 12,
-            left: 12,
-            zIndex: 110,
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          <FiMenu size={18} />
-        </motion.button>
-      )}
+      <motion.button
+        onClick={() => setSidebarOpen(true)}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={{
+          position: 'fixed',
+          top: 12,
+          left: 12,
+          zIndex: 110,
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          color: 'var(--text-secondary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        <FiMenu size={18} />
+      </motion.button>
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <motion.main
         layout
@@ -48,6 +45,7 @@ export default function Layout() {
           transition: 'margin 0.3s ease',
           padding: '24px',
           paddingTop: 64,
+          paddingBottom: 80,
           minHeight: '100vh',
           overflow: 'auto',
           position: 'relative',
@@ -62,7 +60,6 @@ export default function Layout() {
           <Outlet />
         </div>
       </motion.main>
-      <MobileNav />
     </div>
   )
 }

@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
+import { authAPI } from '../services/api'
 import toast from 'react-hot-toast'
-import { FiMail, FiLock, FiLogIn, FiArrowRight } from 'react-icons/fi'
+import { FiMail, FiLock, FiLogIn, FiArrowRight, FiKey, FiCheck } from 'react-icons/fi'
 import ThreeBackground from '../components/ThreeBackground'
 
 export default function Login() {
@@ -12,6 +13,12 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [unverifiedEmail, setUnverifiedEmail] = useState('')
+  const [showForgot, setShowForgot] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetCode, setResetCode] = useState('')
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetStep, setResetStep] = useState('email')
+  const [resetLoading, setResetLoading] = useState(false)
   const { login } = useAuth()
 
   const handleSubmit = async (e) => {
@@ -25,6 +32,8 @@ export default function Login() {
         navigate('/app/teacher', { replace: true })
       } else if (userData?.role === 'admin') {
         navigate('/app/admin', { replace: true })
+      } else {
+        navigate('/app/dashboard', { replace: true })
       }
     } catch (err) {
       if (err.response?.status === 403) {
@@ -36,6 +45,37 @@ export default function Login() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleForgotSendCode = async (e) => {
+    e.preventDefault()
+    if (!resetEmail.trim()) { toast.error('Enter your email'); return }
+    setResetLoading(true)
+    try {
+      await authAPI.forgotPassword(resetEmail.trim())
+      toast.success('Reset code sent if this email is registered')
+      setResetStep('code')
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to send code') }
+    finally { setResetLoading(false) }
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    if (!resetCode.trim() || resetPassword.length < 8) {
+      toast.error('Enter the code and a new password (min 8 characters)')
+      return
+    }
+    setResetLoading(true)
+    try {
+      await authAPI.resetPassword(resetEmail.trim(), resetCode.trim(), resetPassword)
+      toast.success('Password reset! You can now log in.')
+      setShowForgot(false)
+      setResetStep('email')
+      setResetCode('')
+      setResetPassword('')
+      setResetEmail('')
+    } catch (err) { toast.error(err.response?.data?.detail || 'Reset failed') }
+    finally { setResetLoading(false) }
   }
 
   return (
@@ -131,12 +171,64 @@ export default function Login() {
           >
             {loading ? 'Signing in...' : <><FiLogIn size={18} /> Sign In</>}
           </motion.button>
+
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <button type="button" onClick={() => setShowForgot(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}>
+              Forgot Password?
+            </button>
+          </div>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: 24, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           Don't have an account? <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>Register</Link>
         </p>
       </motion.div>
+
+      {showForgot && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: 20
+          }}
+          onClick={() => { setShowForgot(false); setResetStep('email') }}>
+          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+            className="card" style={{ maxWidth: 400, width: '100%', padding: 32, position: 'relative' }}
+            onClick={e => e.stopPropagation()}>
+            <button onClick={() => { setShowForgot(false); setResetStep('email') }}
+              className="btn btn-ghost" style={{ position: 'absolute', top: 12, right: 12, padding: 8 }}>x</button>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: 16 }}>Reset Password</h2>
+
+            {resetStep === 'email' ? (
+              <form onSubmit={handleForgotSendCode} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                  <FiMail size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)}
+                    className="input-field" style={{ paddingLeft: 40 }} placeholder="Your registered email" required />
+                </div>
+                <motion.button type="submit" disabled={resetLoading} className="btn btn-primary" style={{ justifyContent: 'center' }}>
+                  {resetLoading ? 'Sending...' : <><FiKey size={16} /> Send Reset Code</>}
+                </motion.button>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Enter the 6-digit code sent to {resetEmail}</p>
+                <input type="text" value={resetCode} onChange={e => setResetCode(e.target.value)}
+                  className="input-field" placeholder="6-digit code" maxLength={6} required />
+                <div style={{ position: 'relative' }}>
+                  <FiLock size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input type="password" value={resetPassword} onChange={e => setResetPassword(e.target.value)}
+                    className="input-field" style={{ paddingLeft: 40 }} placeholder="New password (min 8 chars)" required />
+                </div>
+                <motion.button type="submit" disabled={resetLoading} className="btn btn-primary" style={{ justifyContent: 'center' }}>
+                  {resetLoading ? 'Resetting...' : <><FiCheck size={16} /> Reset Password</>}
+                </motion.button>
+              </form>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }

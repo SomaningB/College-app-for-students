@@ -13,6 +13,7 @@ from app.services.email import send_verification_email
 router = APIRouter()
 
 verify_attempts = {}
+reset_attempts = {}
 MAX_VERIFY_ATTEMPTS = 5
 
 def hash_password(password: str) -> str:
@@ -241,6 +242,87 @@ async def search_users(query: str = "", current_user: dict = Depends(get_current
         "unique_id": u["unique_id"],
         "stream": u["stream"]
     } for u in users]
+
+@router.post("/forgot-password")
+async def forgot_password(req: dict, background_tasks: BackgroundTasks):
+    email = (req.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    db = get_db()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        return {"message": "If this email is registered, a reset code will be sent."}
+
+    reset_code = ''.join(random.choices(string.digits, k=6))
+    code_expires = datetime.utcnow() + timedelta(minutes=VERIFICATION_TOKEN_EXPIRE_MINUTES)
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"reset_code": reset_code, "reset_code_expires": code_expires}}
+    )
+
+    from app.services.email import send_email
+    html = f"""
+    <div style="font-family: Arial, sans-serif; padding: 24px;">
+        <h2 style="color: #6366f1;">Password Reset</h2>
+        <p>Use the code below to reset your password:</p>
+        <div style="font-size: 32px; font-weight: 700; letter-spacing: 8px; text-align: center;
+            padding: 20px; background: #f0f0ff; border-radius: 12px; margin: 20px 0;">
+            {reset_code}
+        </div>
+        <p style="color: #666;">This code expires in 24 hours.</p>
+    </div>
+    """
+    background_tasks.add_task(send_email, user["email"], user["name"], "Password Reset Code", html)
+
+    return {"message": "If this email is registered, a reset code will be sent."}
+
+@router.post("/reset-password")
+async def reset_password(req: dict):
+    email = (req.get("email") or "").strip().lower()
+    code = (req.get("code") or "").strip()
+    new_password = req.get("password", "")
+
+    if not email or not code or not new_password:
+        raise HTTPException(status_code=400, detail="Email, code, and new password are required")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    db = get_db()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid request")
+
+    now = datetime.utcnow()
+    attempts_key = f"reset:{email}"
+    attempt_data = reset_attempts.get(attempts_key)
+    if attempt_data and attempt_data["count"] >= 5:
+        if now - attempt_data["locked_until"] < timedelta(minutes=15):
+            raise HTTPException(status_code=429, detail="Too many attempts. Try again in 15 minutes.")
+        del reset_attempts[attempts_key]
+
+    if user.get("reset_code_expires") and user["reset_code_expires"] < now:
+        raise HTTPException(status_code=400, detail="Reset code has expired. Request a new one.")
+
+    if user.get("reset_code") != code:
+        if attempts_key not in reset_attempts:
+            reset_attempts[attempts_key] = {"count": 0, "locked_until": now}
+        reset_attempts[attempts_key]["count"] += 1
+        if reset_attempts[attempts_key]["count"] >= 5:
+            reset_attempts[attempts_key]["locked_until"] = now
+            raise HTTPException(status_code=429, detail="Too many attempts. Try again in 15 minutes.")
+        remaining = 5 - reset_attempts[attempts_key]["count"]
+        raise HTTPException(status_code=400, detail=f"Invalid code. {remaining} attempt(s) remaining.")
+
+    reset_attempts.pop(attempts_key, None)
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"hashed_password": hash_password(new_password)}, "$unset": {"reset_code": "", "reset_code_expires": ""}}
+    )
+
+    return {"message": "Password reset successfully. You can now log in."}
 
 @router.get("/users/by-id/{unique_id}")
 async def get_user_by_unique_id(unique_id: str, current_user: dict = Depends(get_current_user)):
