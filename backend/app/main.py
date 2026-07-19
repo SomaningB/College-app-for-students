@@ -32,12 +32,21 @@ ALLOWED_ORIGINS = [
     "capacitor://localhost",
 ]
 
+# Allow any Vercel preview deployment
+def is_allowed_origin(origin: str) -> bool:
+    if origin in ALLOWED_ORIGINS:
+        return True
+    # Allow any Vercel preview deployment
+    if origin.endswith(".vercel.app"):
+        return True
+    return False
+
 CSP_HEADER = "default-src 'self'; " \
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " \
     "style-src 'self' 'unsafe-inline'; " \
     "img-src 'self' data: blob: https:; " \
     "font-src 'self' data:; " \
-    "connect-src 'self' wss: https://openrouter.ai https://api.openai.com https://api.brevo.com https://college-app-backend-q8a9.onrender.com; " \
+    "connect-src 'self' wss: https://openrouter.ai https://api.openai.com https://api.brevo.com https://college-app-backend-q8a9.onrender.com https://*.vercel.app; " \
     "frame-ancestors 'none'; " \
     "base-uri 'self'; " \
     "form-action 'self'"
@@ -58,7 +67,7 @@ async def security_middleware(request: Request, call_next):
         origin = request.headers.get("origin", "")
         referer = request.headers.get("referer", "")
         if request.method in ("POST", "PUT", "PATCH", "DELETE"):
-            if origin and origin not in ALLOWED_ORIGINS:
+            if origin and not is_allowed_origin(origin):
                 logger.warning(f"Blocked request from unknown origin: {origin}")
                 return JSONResponse(status_code=403, content={"detail": "Access denied"})
 
