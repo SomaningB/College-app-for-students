@@ -38,7 +38,6 @@ export default function Layout() {
       </motion.button>
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <motion.main
-        layout
         style={{
           flex: 1,
           marginLeft: sidebarOpen ? 260 : 0,
@@ -47,18 +46,12 @@ export default function Layout() {
           paddingTop: 64,
           paddingBottom: 80,
           minHeight: '100vh',
-          overflow: 'auto',
+          overflowY: 'auto',
           position: 'relative',
-          zIndex: 1,
-          perspective: '1000px'
+          zIndex: 1
         }}
       >
-        <div style={{
-          transformStyle: 'preserve-3d',
-          perspective: '1000px'
-        }}>
-          <Outlet />
-        </div>
+        <Outlet />
       </motion.main>
     </div>
   )

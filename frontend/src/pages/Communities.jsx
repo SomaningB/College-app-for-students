@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { communitiesAPI } from '../services/api'
-import { FiUsers, FiPlus, FiSearch, FiExternalLink, FiMessageSquare, FiTrash2 } from 'react-icons/fi'
+import { FiUsers, FiPlus, FiSearch, FiExternalLink, FiMessageSquare, FiTrash2, FiCheck, FiX, FiClock } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 
 export default function Communities() {
@@ -16,6 +16,8 @@ export default function Communities() {
   const [memberInput, setMemberInput] = useState('')
   const [memberIds, setMemberIds] = useState([])
   const [search, setSearch] = useState('')
+  const [pendingMembers, setPendingMembers] = useState({})
+  const [showPending, setShowPending] = useState(null)
 
   useEffect(() => { loadAll() }, [])
 
@@ -28,6 +30,36 @@ export default function Communities() {
       setMine(mRes.data)
       setExplore(eRes.data)
     } catch {}
+  }
+
+  const loadPending = async (communityId) => {
+    try {
+      const res = await communitiesAPI.getPending(communityId)
+      setPendingMembers(prev => ({ ...prev, [communityId]: res.data }))
+      setShowPending(communityId)
+    } catch {}
+  }
+
+  const handleApprove = async (communityId, userId) => {
+    try {
+      await communitiesAPI.approveMember(communityId, userId)
+      toast.success('Member approved')
+      loadPending(communityId)
+      loadAll()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to approve')
+    }
+  }
+
+  const handleReject = async (communityId, userId) => {
+    try {
+      await communitiesAPI.rejectMember(communityId, userId)
+      toast.success('Member rejected')
+      loadPending(communityId)
+      loadAll()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to reject')
+    }
   }
 
   const handleCreate = async (e) => {
@@ -49,8 +81,8 @@ export default function Communities() {
 
   const handleJoin = async (id) => {
     try {
-      await communitiesAPI.join(id)
-      toast.success('Joined community!')
+      const res = await communitiesAPI.join(id)
+      toast.success(res.data?.message || 'Join request sent!')
       loadAll()
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to join')
@@ -108,8 +140,12 @@ export default function Communities() {
               placeholder="Community name" className="input-field" required />
             <input type="text" value={createForm.description} onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))}
               placeholder="Description (optional)" className="input-field" />
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 8, padding: '8px 12px', background: 'var(--accent-glow)', borderRadius: 8 }}>
+              <strong>Requirement:</strong> At least 5 members (including you) are needed to start a community.
+              Added: {memberIds.length + 1} / 5 members
+            </div>
             <div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>Add members by Student ID (optional):</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>Add members by Student ID:</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input type="text" value={memberInput} onChange={e => setMemberInput(e.target.value.toUpperCase())}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMemberId() } }}
@@ -159,7 +195,7 @@ export default function Communities() {
         </button>
       </div>
 
-      {tab === 'mine' ? (
+        {tab === 'mine' ? (
         mine.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
             <FiUsers size={40} style={{ marginBottom: 8, opacity: 0.3 }} />
@@ -172,18 +208,31 @@ export default function Communities() {
                 className="card" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>{c.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     {c.member_count} members · created by {c.created_by_name}
+                    {c.created_by === user?.id && c.pending_count > 0 && (
+                      <span onClick={() => loadPending(c.id)} style={{ color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <FiClock size={12} /> {c.pending_count} pending
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {c.created_by === user?.id && (
-                    <button onClick={() => handleDelete(c.id)}
-                      className="btn" style={{ color: 'var(--error)', padding: '8px 12px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
-                      <FiTrash2 size={14} />
-                    </button>
+                    <>
+                      {c.pending_count > 0 && (
+                        <button onClick={() => loadPending(c.id)}
+                          className="btn" style={{ color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
+                          <FiClock size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(c.id)}
+                        className="btn" style={{ color: 'var(--error)', padding: '8px 12px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
+                        <FiTrash2 size={14} />
+                      </button>
+                    </>
                   )}
-                  <Link to={`/communities/${c.id}`} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                  <Link to={`/app/communities/${c.id}`} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
                     <FiMessageSquare size={14} /> Chat
                   </Link>
                 </div>
@@ -217,14 +266,53 @@ export default function Communities() {
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{c.description}</div>
                     )}
                   </div>
-                  <button onClick={() => handleJoin(c.id)} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                    <FiExternalLink size={14} /> Join
-                  </button>
+                   {c.has_pending ? (
+                     <button className="btn" disabled style={{ padding: '8px 16px', fontSize: '0.8rem', opacity: 0.6 }}>
+                       <FiClock size={14} /> Requested
+                     </button>
+                   ) : (
+                     <button onClick={() => handleJoin(c.id)} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                       <FiExternalLink size={14} /> Join
+                     </button>
+                   )}
                 </motion.div>
               ))}
             </div>
           )}
         </>
+      )}
+      {showPending && pendingMembers[showPending] && (
+        <AnimatePresence>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+            className="card" style={{ padding: 20, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: '1rem' }}>Pending Join Requests</h3>
+              <button onClick={() => setShowPending(null)} className="btn-ghost" style={{ padding: '4px 8px' }}><FiX size={16} /></button>
+            </div>
+            {pendingMembers[showPending].length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No pending requests</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {pendingMembers[showPending].map(m => (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'var(--bg-secondary)' }}>
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{m.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>@{m.unique_id}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleApprove(showPending, m.id)} className="btn" style={{ color: 'var(--success, #22c55e)', padding: '6px 12px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
+                        <FiCheck size={14} /> Approve
+                      </button>
+                      <button onClick={() => handleReject(showPending, m.id)} className="btn" style={{ color: 'var(--error)', padding: '6px 12px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
+                        <FiX size={14} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       )}
     </div>
   )

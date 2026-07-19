@@ -69,6 +69,9 @@ export const communitiesAPI = {
   explore: () => api.get('/communities/explore'),
   join: (id) => api.post(`/communities/${id}/join`),
   getMembers: (id) => api.get(`/communities/${id}/members`),
+  getPending: (id) => api.get(`/communities/${id}/pending`),
+  approveMember: (communityId, userId) => api.post(`/communities/${communityId}/approve/${userId}`),
+  rejectMember: (communityId, userId) => api.post(`/communities/${communityId}/reject/${userId}`),
   delete: (id) => api.delete(`/communities/${id}`)
 }
 

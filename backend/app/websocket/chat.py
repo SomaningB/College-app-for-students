@@ -172,7 +172,7 @@ async def chat_websocket(websocket: WebSocket):
 
                 db = get_db()
                 community = await db.communities.find_one({"_id": ObjectId(community_id)})
-                if not community or user_id not in community["members"]:
+                if not community or user_id not in community.get("members", []):
                     await websocket.send_text(json.dumps({
                         "type": "error",
                         "message": "Not a member of this community"
@@ -205,7 +205,7 @@ async def chat_websocket(websocket: WebSocket):
 
                 response_str = json.dumps(response, default=str)
 
-                for member_id in community["members"]:
+                for member_id in community.get("members", []):
                     if member_id in connected_clients:
                         alive = []
                         for ws in connected_clients[member_id]:
@@ -249,7 +249,7 @@ async def chat_websocket(websocket: WebSocket):
                     db = get_db()
                     community = await db.communities.find_one({"_id": ObjectId(chat_id)})
                     if community:
-                        for member_id in community["members"]:
+                        for member_id in community.get("members", []):
                             if member_id != user_id and member_id in connected_clients:
                                 alive = []
                                 for ws in connected_clients[member_id]:

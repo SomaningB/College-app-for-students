@@ -26,6 +26,7 @@ async def create_community(
         raise HTTPException(status_code=400, detail="Maximum 10 communities per user")
 
     members = [str(current_user["_id"])]
+    total_members = 1
 
     if data.member_ids:
         for uid in data.member_ids:
@@ -34,6 +35,10 @@ async def create_community(
             user = await db.users.find_one({"unique_id": uid})
             if user and str(user["_id"]) not in members:
                 members.append(str(user["_id"]))
+                total_members += 1
+
+    if total_members < 5:
+        raise HTTPException(status_code=400, detail=f"Minimum 5 members required to start a community. Add {5 - total_members} more member(s).")
 
     community = {
         "name": data.name,
@@ -41,6 +46,7 @@ async def create_community(
         "created_by": str(current_user["_id"]),
         "created_by_name": current_user["name"],
         "members": members,
+        "pending_members": [],
         "created_at": datetime.utcnow()
     }
 
@@ -72,8 +78,9 @@ async def get_communities(current_user: dict = Depends(get_current_user)):
         "description": c.get("description", ""),
         "created_by": c["created_by"],
         "created_by_name": c["created_by_name"],
-        "member_count": len(c["members"]),
-        "members": c["members"],
+        "member_count": len(c.get("members", [])),
+        "members": c.get("members", []),
+        "pending_count": len(c.get("pending_members", [])),
         "created_at": c["created_at"]
     } for c in communities]
 
@@ -91,7 +98,8 @@ async def explore_communities(current_user: dict = Depends(get_current_user)):
         "name": c["name"],
         "description": c.get("description", ""),
         "created_by_name": c["created_by_name"],
-        "member_count": len(c["members"]),
+        "member_count": len(c.get("members", [])),
+        "has_pending": current_id in c.get("pending_members", []),
         "created_at": c["created_at"]
     } for c in communities]
 
@@ -107,15 +115,98 @@ async def join_community(
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
 
-    if current_id in community["members"]:
+    if current_id in community.get("members", []):
         raise HTTPException(status_code=400, detail="Already a member")
+
+    if current_id in community.get("pending_members", []):
+        raise HTTPException(status_code=400, detail="Join request already pending")
 
     await db.communities.update_one(
         {"_id": ObjectId(community_id)},
-        {"$push": {"members": current_id}}
+        {"$push": {"pending_members": current_id}}
     )
 
-    return {"message": "Joined community"}
+    return {"message": "Join request sent. Waiting for creator approval."}
+
+@router.get("/{community_id}/pending")
+async def get_pending_members(
+    community_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    db = get_db()
+    current_id = str(current_user["_id"])
+
+    community = await db.communities.find_one({"_id": ObjectId(community_id)})
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    if community["created_by"] != current_id and current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only the creator can view pending requests")
+
+    pending_ids = [ObjectId(uid) for uid in community.get("pending_members", [])]
+    pending = []
+    if pending_ids:
+        cursor = db.users.find({"_id": {"$in": pending_ids}})
+        async for user in cursor:
+            pending.append({
+                "id": str(user["_id"]),
+                "name": user["name"],
+                "unique_id": user["unique_id"]
+            })
+
+    return pending
+
+@router.post("/{community_id}/approve/{user_id}")
+async def approve_member(
+    community_id: str,
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    db = get_db()
+    current_id = str(current_user["_id"])
+
+    community = await db.communities.find_one({"_id": ObjectId(community_id)})
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    if community["created_by"] != current_id:
+        raise HTTPException(status_code=403, detail="Only the creator can approve members")
+
+    if user_id not in community.get("pending_members", []):
+        raise HTTPException(status_code=400, detail="User has no pending request")
+
+    await db.communities.update_one(
+        {"_id": ObjectId(community_id)},
+        {"$pull": {"pending_members": user_id}, "$push": {"members": user_id}}
+    )
+
+    return {"message": "Member approved"}
+
+@router.post("/{community_id}/reject/{user_id}")
+async def reject_member(
+    community_id: str,
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    db = get_db()
+    current_id = str(current_user["_id"])
+
+    community = await db.communities.find_one({"_id": ObjectId(community_id)})
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    if community["created_by"] != current_id:
+        raise HTTPException(status_code=403, detail="Only the creator can reject members")
+
+    if user_id not in community.get("pending_members", []):
+        raise HTTPException(status_code=400, detail="User has no pending request")
+
+    await db.communities.update_one(
+        {"_id": ObjectId(community_id)},
+        {"$pull": {"pending_members": user_id}}
+    )
+
+    return {"message": "Member rejected"}
 
 @router.get("/{community_id}/members")
 async def get_community_members(
@@ -128,7 +219,7 @@ async def get_community_members(
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
 
-    member_ids = [ObjectId(uid) for uid in community["members"]]
+    member_ids = [ObjectId(uid) for uid in community.get("members", [])]
     members = []
     if member_ids:
         cursor = db.users.find({"_id": {"$in": member_ids}})
