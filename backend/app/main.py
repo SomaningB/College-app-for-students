@@ -27,9 +27,11 @@ app = FastAPI(title="College Student App", lifespan=lifespan)
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
+    "http://localhost",
     "https://college-app-backend-q8a9.onrender.com",
     "https://college-app.vercel.app",
     "capacitor://localhost",
+    "file://",
 ]
 
 # Allow any Vercel preview deployment
