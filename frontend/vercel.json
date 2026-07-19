@@ -1,5 +1,8 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://college-app-backend-q8a9.onrender.com/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite"

@@ -144,6 +144,17 @@ async def get_streams():
     from app.config import STREAMS, LANGUAGES
     return {**STREAMS, "_languages": LANGUAGES}
 
+@app.get("/api/app-config")
+async def app_config(request: Request):
+    scheme = request.headers.get("x-forwarded-proto", "http")
+    host = request.headers.get("x-forwarded-host", request.headers.get("host", "localhost:8000"))
+    return {
+        "ws_url": f"{'wss' if scheme == 'https' else 'ws'}://{host}/ws/chat",
+        "api_url": f"{scheme}://{host}/api",
+        "app_name": "College App",
+        "version": "1.0.0"
+    }
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}

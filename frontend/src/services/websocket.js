@@ -1,3 +1,5 @@
+let cachedWsUrl = null
+
 class ChatWebSocket {
   constructor() {
     this.ws = null
@@ -8,18 +10,32 @@ class ChatWebSocket {
     this.isAuthenticated = false
     this.pendingToken = null
     this.pendingMessages = []
+    this.configPromise = null
   }
 
-  connect(token) {
+  async fetchWsUrl() {
+    if (cachedWsUrl) return cachedWsUrl
+    try {
+      const base = import.meta.env.VITE_API_URL || ''
+      const configUrl = base ? `${base}/app-config` : '/api/app-config'
+      const res = await fetch(configUrl, { signal: AbortSignal.timeout(5000) })
+      const config = await res.json()
+      cachedWsUrl = config.ws_url
+      return cachedWsUrl
+    } catch {
+      const host = window.location.host
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      return `${protocol}//${host}/ws/chat`
+    }
+  }
+
+  async connect(token) {
     if (this.ws?.readyState === WebSocket.OPEN) return
 
     this.isAuthenticated = false
     this.pendingToken = token
 
-    const base = import.meta.env.VITE_API_URL || ''
-    const protocol = base.startsWith('https') ? 'wss:' : 'ws:'
-    const host = base.replace(/^https?:\/\//, '')
-    const url = host ? `${protocol}//${host}/ws/chat` : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat`
+    const url = await this.fetchWsUrl()
     this.ws = new WebSocket(url)
 
     this.ws.onopen = () => {
