@@ -37,7 +37,7 @@ CSP_HEADER = "default-src 'self'; " \
     "style-src 'self' 'unsafe-inline'; " \
     "img-src 'self' data: blob: https:; " \
     "font-src 'self' data:; " \
-    "connect-src 'self' wss: https://openrouter.ai https://api.openai.com https://api.brevo.com; " \
+    "connect-src 'self' wss: https://openrouter.ai https://api.openai.com https://api.brevo.com https://college-app-backend-q8a9.onrender.com; " \
     "frame-ancestors 'none'; " \
     "base-uri 'self'; " \
     "form-action 'self'"
@@ -107,8 +107,6 @@ async def security_middleware(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if not path.startswith("/ws"):
         response.headers["Content-Security-Policy"] = CSP_HEADER
-    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     return response
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
