@@ -2,16 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from datetime import datetime
 import os
 import uuid
+import bcrypt
 import aiofiles
 from bson import ObjectId
 from app.config import UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
 from app.database import get_db
 from app.middleware.auth import get_admin_user, get_current_user
-from passlib.context import CryptContext
 from app.file_validation import validate_file_signature
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".doc", ".docx"}
 
@@ -37,7 +36,7 @@ async def seed_admin():
     admin = {
         "name": "Admin",
         "email": "admin@collegeapp.com",
-        "hashed_password": pwd_context.hash(password),
+        "hashed_password": bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         "unique_id": "000000",
         "stream": "",
         "subjects": [],
@@ -68,7 +67,7 @@ async def create_teacher(
     teacher = {
         "name": name,
         "email": f"{unique_id.lower()}@collegeapp.com",
-        "hashed_password": pwd_context.hash(password),
+        "hashed_password": bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         "unique_id": unique_id,
         "stream": stream,
         "subjects": subject_list,
@@ -271,7 +270,7 @@ async def reset_teacher_password(
     new_password = secrets.token_urlsafe(12)
     await db.users.update_one(
         {"_id": ObjectId(teacher_id)},
-        {"$set": {"hashed_password": pwd_context.hash(new_password)}}
+        {"$set": {"hashed_password": bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")}}
     )
     return {
         "message": "Password reset successfully",
@@ -296,7 +295,7 @@ async def set_teacher_password(
 
     await db.users.update_one(
         {"_id": ObjectId(teacher_id)},
-        {"$set": {"hashed_password": pwd_context.hash(new_password)}}
+        {"$set": {"hashed_password": bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")}}
     )
     return {"message": "Password updated successfully"}
 
