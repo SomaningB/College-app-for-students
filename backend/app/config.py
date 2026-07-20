@@ -27,7 +27,7 @@ APP_URL = os.getenv("APP_URL", "http://localhost:3000")
 # IMPORTANT: FROM_EMAIL must be a verified sender in your Brevo dashboard.
 # Gmail/Yahoo/Hotmail addresses have strict DMARC policies and will be rejected.
 # Go to https://app.brevo.com/senders/ to add and verify a sender email/domain.
-FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@collegeapp.com")
+FROM_EMAIL = os.getenv("FROM_EMAIL", "somubelagaonkar@gmail.com")
 FROM_NAME = os.getenv("FROM_NAME", "College App")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "")
