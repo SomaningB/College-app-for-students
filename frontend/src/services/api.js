@@ -80,12 +80,12 @@ async function capUpload(method, url, formData) {
   } catch (e) { throw e }
 }
 
-function apiGet(url, config) { return isCapacitor ? capRequest('GET', url, null, config) : api.get(url, config) }
-function apiPost(url, data, config) { return isCapacitor ? capRequest('POST', url, data, config) : api.post(url, data, config) }
-function apiPut(url, data, config) { return isCapacitor ? capRequest('PUT', url, data, config) : api.put(url, data, config) }
-function apiPatch(url, data, config) { return isCapacitor ? capRequest('PATCH', url, data, config) : api.patch(url, data, config) }
-function apiDelete(url, config) { return isCapacitor ? capRequest('DELETE', url, null, config) : api.delete(url, config) }
-function apiUpload(method, url, formData) { return isCapacitor ? capUpload(method, url, formData) : api({ method, url, data: formData, headers: { 'Content-Type': 'multipart/form-data' } }) }
+function apiGet(url, config) { return isNative ? capRequest('GET', url, null, config) : api.get(url, config) }
+function apiPost(url, data, config) { return isNative ? capRequest('POST', url, data, config) : api.post(url, data, config) }
+function apiPut(url, data, config) { return isNative ? capRequest('PUT', url, data, config) : api.put(url, data, config) }
+function apiPatch(url, data, config) { return isNative ? capRequest('PATCH', url, data, config) : api.patch(url, data, config) }
+function apiDelete(url, config) { return isNative ? capRequest('DELETE', url, null, config) : api.delete(url, config) }
+function apiUpload(method, url, formData) { return isNative ? capUpload(method, url, formData) : api({ method, url, data: formData, headers: { 'Content-Type': 'multipart/form-data' } }) }
 
 export const authAPI = {
   register: (data) => apiPost('/auth/register', data),
