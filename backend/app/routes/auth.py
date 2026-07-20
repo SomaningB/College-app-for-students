@@ -9,6 +9,9 @@ from app.database import get_db
 from app.models.user import UserCreate, UserLogin, VerifyEmailRequest, ResendVerificationRequest, UserResponse
 from app.middleware.auth import get_current_user
 from app.services.email import send_verification_email
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -33,6 +36,14 @@ def generate_unique_id():
 
 def create_verification_code():
     return ''.join(random.choices(string.digits, k=6))
+
+async def send_verification_email_task(email: str, name: str, code: str):
+    try:
+        success = await send_verification_email(email, name, code)
+        if not success:
+            logger.error(f"Failed to send verification email to {email} — check Brevo config and FROM_EMAIL")
+    except Exception as e:
+        logger.error(f"Exception sending verification email to {email}: {e}", exc_info=True)
 
 @router.post("/register")
 async def register(user_data: UserCreate, background_tasks: BackgroundTasks):
@@ -90,7 +101,7 @@ async def register(user_data: UserCreate, background_tasks: BackgroundTasks):
     result = await db.users.insert_one(user)
 
     background_tasks.add_task(
-        send_verification_email,
+        send_verification_email_task,
         user_data.email,
         user_data.name,
         verification_code
@@ -165,7 +176,7 @@ async def resend_verification(req: ResendVerificationRequest, background_tasks: 
     )
 
     background_tasks.add_task(
-        send_verification_email,
+        send_verification_email_task,
         user["email"],
         user["name"],
         new_code

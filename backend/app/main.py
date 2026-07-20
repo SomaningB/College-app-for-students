@@ -13,12 +13,28 @@ import os
 import time
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_db()
     os.makedirs(UPLOAD_DIR, exist_ok=True)
+    from app.config import BREVO_API_KEY, FROM_EMAIL
+    if not BREVO_API_KEY:
+        logger.warning("BREVO_API_KEY is not set — verification emails will NOT be sent")
+    elif "gmail.com" in FROM_EMAIL or "yahoo.com" in FROM_EMAIL:
+        logger.warning(
+            f"FROM_EMAIL ({FROM_EMAIL}) uses a DMARC-restricted domain. "
+            "Emails may be rejected by recipients. Verify a custom domain in Brevo dashboard."
+        )
+    else:
+        logger.info(f"Brevo configured with FROM_EMAIL={FROM_EMAIL}")
     yield
     await close_db()
 

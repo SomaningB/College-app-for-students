@@ -27,6 +27,8 @@ services:
         sync: false
       - key: APP_URL
         value: https://college-app-by-sbelagavakar.vercel.app
+      # Must be a verified sender in Brevo dashboard (app.brevo.com/senders/)
+      # Gmail/Yahoo/Hotmail get rejected due to DMARC — use a custom domain instead
       - key: FROM_EMAIL
         value: somubelagaonkar@gmail.com
       - key: FROM_NAME

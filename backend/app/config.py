@@ -1,7 +1,10 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+dotenv_path = Path(__file__).resolve().parent.parent / '.env'
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path)
 
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "college_app")
@@ -21,6 +24,9 @@ SSL_KEY_PATH = os.getenv("SSL_KEY_PATH", "./certs/key.pem")
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 VERIFICATION_TOKEN_EXPIRE_MINUTES = int(os.getenv("VERIFICATION_TOKEN_EXPIRE_MINUTES", "1440"))
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
+# IMPORTANT: FROM_EMAIL must be a verified sender in your Brevo dashboard.
+# Gmail/Yahoo/Hotmail addresses have strict DMARC policies and will be rejected.
+# Go to https://app.brevo.com/senders/ to add and verify a sender email/domain.
 FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@collegeapp.com")
 FROM_NAME = os.getenv("FROM_NAME", "College App")
 

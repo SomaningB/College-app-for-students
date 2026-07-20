@@ -6,10 +6,20 @@ logger = logging.getLogger(__name__)
 
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
+DMARC_RESTRICTED_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "live.com"]
+
 async def send_email(to_email: str, to_name: str, subject: str, html_content: str):
     if not BREVO_API_KEY:
         logger.warning("BREVO_API_KEY not set. Skipping email send.")
-        return
+        return False
+
+    sender_domain = FROM_EMAIL.split("@")[-1].lower()
+    if sender_domain in DMARC_RESTRICTED_DOMAINS:
+        logger.warning(
+            f"FROM_EMAIL ({FROM_EMAIL}) uses {sender_domain} which has a strict DMARC policy. "
+            "Emails sent from this domain via Brevo will likely be rejected by recipients. "
+            "Verify this sender in Brevo dashboard or use a custom domain."
+        )
 
     payload = {
         "sender": {"name": FROM_NAME, "email": FROM_EMAIL},
@@ -32,12 +42,19 @@ async def send_email(to_email: str, to_name: str, subject: str, html_content: st
             )
             if resp.status_code not in (200, 201):
                 logger.error(f"Brevo email failed: {resp.status_code} {resp.text}")
+                return False
             else:
-                logger.info(f"Verification email sent to {to_email}")
-            return resp
+                logger.info(f"Email sent to {to_email} (subject: {subject})")
+                return True
+        except httpx.ConnectError as e:
+            logger.error(f"Failed to connect to Brevo API: {e}")
+            return False
+        except httpx.TimeoutException as e:
+            logger.error(f"Brevo API timed out: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Failed to send email: {e}")
-            raise
+            logger.error(f"Failed to send email: {e}", exc_info=True)
+            return False
 
 async def send_verification_email(to_email: str, to_name: str, code: str):
     subject = "Your verification code - College App"
@@ -60,4 +77,7 @@ async def send_verification_email(to_email: str, to_name: str, code: str):
     </body>
     </html>
     """
-    await send_email(to_email, to_name, subject, html)
+    success = await send_email(to_email, to_name, subject, html)
+    if not success:
+        logger.error(f"Failed to send verification email to {to_email}")
+    return success
