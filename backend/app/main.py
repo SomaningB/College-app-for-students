@@ -46,6 +46,7 @@ ALLOWED_ORIGINS = [
     "http://localhost",
     "https://college-app-backend-q8a9.onrender.com",
     "https://college-app.vercel.app",
+    "https://college-app-by-sbelagavakar.vercel.app",
     "capacitor://localhost",
     "file://",
 ]
